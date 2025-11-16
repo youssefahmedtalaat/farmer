@@ -1,7 +1,8 @@
 
   # Farmer Assistant Web Platform
 
-  This is a code bundle for Farmer Assistant Web Platform. The original project is available at https://www.figma.com/design/1UrRX15pSKYYswZNNezJeU/Farmer-Assistant-Web-Platform.
+ This is the official repository for the Farmer Assistant Web Platform.
+All code is now maintained here in the `youssefahmedtalaat/farmer` repository.
 
   ## Running the code
 
