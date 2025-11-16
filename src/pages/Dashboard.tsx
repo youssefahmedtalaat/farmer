@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -160,12 +160,57 @@ export function Dashboard() {
 }
 
 function DashboardHome({ user }: { user: any }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [crops, setCrops] = useState<any[]>([]);
+  const [originalCrops, setOriginalCrops] = useState<any[]>([]); // Store original crop data
   const [isLoadingCrops, setIsLoadingCrops] = useState(true);
   const [showAddCropDialog, setShowAddCropDialog] = useState(false);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
+
+  // Helper function to translate crop names
+  const translateCropName = (cropName: string): string => {
+    if (!cropName) return cropName;
+    
+    // Normalize the crop name (lowercase, trim, handle common variations)
+    const normalized = cropName.trim().toLowerCase();
+    
+    // Map common crop names to translation keys
+    const cropNameMap: { [key: string]: string } = {
+      'wheat': 'dashboard.data.wheat',
+      'corn': 'dashboard.data.corn',
+      'rice': 'dashboard.data.rice',
+      'soybean': 'dashboard.data.soybeans',
+      'soybeans': 'dashboard.data.soybeans',
+      'tomato': 'dashboard.data.tomato',
+      'tomatoes': 'dashboard.data.tomatoes',
+      'lettuce': 'dashboard.data.lettuce',
+      'carrot': 'dashboard.data.carrot',
+      'carrots': 'dashboard.data.carrots',
+      'green beans': 'dashboard.data.greenBeans',
+      'greenbeans': 'dashboard.data.greenbeans',
+      'green bean': 'dashboard.data.greenBeans',
+      'potato': 'dashboard.data.potato',
+      'potatoes': 'dashboard.data.potatoes',
+      'onion': 'dashboard.data.onion',
+      'onions': 'dashboard.data.onions',
+      'cucumber': 'dashboard.data.cucumber',
+      'cucumbers': 'dashboard.data.cucumbers',
+    };
+    
+    // Try exact match first
+    const translationKey = cropNameMap[normalized];
+    if (translationKey) {
+      const translated = t(translationKey);
+      // Only return translation if it's different (to avoid showing translation key)
+      if (translated && translated !== translationKey) {
+        return translated;
+      }
+    }
+    
+    // Return original name if no translation found
+    return cropName;
+  };
 
   const defaultCrops = [
     { name: t('dashboard.data.wheat'), stock: 80, quantity: `2 ${t('dashboard.data.tons')}`, status: 'Good', color: '#2D6A4F' },
@@ -190,6 +235,19 @@ function DashboardHome({ user }: { user: any }) {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Re-translate crops when language changes
+  useEffect(() => {
+    if (originalCrops.length > 0) {
+      const translatedCrops = originalCrops.map((crop: any) => ({
+        ...crop,
+        name: translateCropName(crop.originalName || crop.name),
+      }));
+      setCrops(translatedCrops);
+      generateAlertsFromCrops(translatedCrops);
+      generateActivitiesFromCrops(translatedCrops);
+    }
+  }, [language, t]);
 
   // Auto-refresh alerts and activities when crops change
   useEffect(() => {
@@ -229,7 +287,7 @@ function DashboardHome({ user }: { user: any }) {
     
     sortedCrops.forEach((crop) => {
       const stock = crop.stock || 0;
-      const cropName = crop.name || 'Unknown Crop';
+      const cropName = translateCropName(crop.name || 'Unknown Crop');
       
       // Critical stock alerts (≤ 25%)
       if (stock <= 25) {
@@ -295,7 +353,7 @@ function DashboardHome({ user }: { user: any }) {
           .slice(0, 4);
 
         sortedCrops.forEach((crop) => {
-          const cropName = crop.name || 'Unknown Crop';
+          const cropName = translateCropName(crop.name || 'Unknown Crop');
           const stock = crop.stock || 0;
           
           generatedActivities.push({
@@ -313,7 +371,7 @@ function DashboardHome({ user }: { user: any }) {
       const generatedActivities: any[] = [];
       
       cropsData.slice(0, 4).forEach((crop) => {
-        const cropName = crop.name || 'Unknown Crop';
+        const cropName = translateCropName(crop.name || 'Unknown Crop');
         const stock = crop.stock || 0;
         
         generatedActivities.push({
@@ -334,10 +392,20 @@ function DashboardHome({ user }: { user: any }) {
       
       // If user has crops in the database, use them
       if (data.crops && data.crops.length > 0) {
-        // Add color based on status
-        const cropsWithColors = data.crops.map((crop: any) => ({
+        // Store original crop data with original names
+        const cropsWithOriginalData = data.crops.map((crop: any) => ({
           ...crop,
+          originalName: crop.name, // Store original English name
           color: crop.stock <= 25 ? '#ef4444' : crop.stock <= 50 ? '#BC6C25' : '#2D6A4F',
+        }));
+        
+        // Store original crops for re-translation
+        setOriginalCrops(cropsWithOriginalData);
+        
+        // Translate crop names based on current language
+        const cropsWithColors = cropsWithOriginalData.map((crop: any) => ({
+          ...crop,
+          name: translateCropName(crop.originalName || crop.name),
         }));
         setCrops(cropsWithColors);
         
@@ -346,6 +414,11 @@ function DashboardHome({ user }: { user: any }) {
         await generateActivitiesFromCrops(cropsWithColors);
       } else {
         // Use default crops for demo purposes
+        const defaultCropsWithOriginal = defaultCrops.map((crop: any) => ({
+          ...crop,
+          originalName: crop.name,
+        }));
+        setOriginalCrops(defaultCropsWithOriginal);
         setCrops(defaultCrops);
         generateAlertsFromCrops(defaultCrops);
         await generateActivitiesFromCrops(defaultCrops);
@@ -353,6 +426,11 @@ function DashboardHome({ user }: { user: any }) {
     } catch (error) {
       console.error('Error loading crops:', error);
       // Use default crops on error
+      const defaultCropsWithOriginal = defaultCrops.map((crop: any) => ({
+        ...crop,
+        originalName: crop.name,
+      }));
+      setOriginalCrops(defaultCropsWithOriginal);
       setCrops(defaultCrops);
       generateAlertsFromCrops(defaultCrops);
       await generateActivitiesFromCrops(defaultCrops);
@@ -781,20 +859,94 @@ function DashboardHome({ user }: { user: any }) {
 
 // My Crops Page Component
 function MyCropsPage({ user }: { user: any }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [crops, setCrops] = useState<any[]>([]);
+  const [originalCrops, setOriginalCrops] = useState<any[]>([]); // Store original crop data
+  const originalCropsRef = useRef<any[]>([]); // Ref to always have latest original crops
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'low' | 'critical' | 'good'>('all');
   const [showAddCropDialog, setShowAddCropDialog] = useState(false);
   const [showEditCropDialog, setShowEditCropDialog] = useState(false);
   const [selectedCrop, setSelectedCrop] = useState<any>(null);
 
-  const defaultCrops = [
-    { name: t('dashboard.data.wheat'), stock: 80, quantity: `2 ${t('dashboard.data.tons')}`, status: 'Good', color: '#2D6A4F', lastUpdated: `3 ${t('dashboard.data.timeHoursAgo')}` },
-    { name: t('dashboard.data.corn'), stock: 45, quantity: `1.2 ${t('dashboard.data.tons')}`, status: 'Low', color: '#BC6C25', lastUpdated: `1 ${t('dashboard.data.timeDayAgo')}` },
-    { name: t('dashboard.data.rice'), stock: 90, quantity: `3.5 ${t('dashboard.data.tons')}`, status: 'Good', color: '#2D6A4F', lastUpdated: `2 ${t('dashboard.data.timeDaysAgo')}` },
-    { name: t('dashboard.data.soybeans'), stock: 25, quantity: `0.8 ${t('dashboard.data.tons')}`, status: 'Critical', color: '#ef4444', lastUpdated: `5 ${t('dashboard.data.timeHoursAgo')}` },
+  // Helper function to translate crop names
+  const translateCropName = (cropName: string): string => {
+    if (!cropName) return cropName;
+    
+    // Normalize the crop name (lowercase, trim, handle common variations)
+    const normalized = cropName.trim().toLowerCase();
+    
+    // Map common crop names to translation keys
+    const cropNameMap: { [key: string]: string } = {
+      'wheat': 'dashboard.data.wheat',
+      'corn': 'dashboard.data.corn',
+      'rice': 'dashboard.data.rice',
+      'soybean': 'dashboard.data.soybeans',
+      'soybeans': 'dashboard.data.soybeans',
+      'tomato': 'dashboard.data.tomato',
+      'tomatoes': 'dashboard.data.tomatoes',
+      'lettuce': 'dashboard.data.lettuce',
+      'carrot': 'dashboard.data.carrot',
+      'carrots': 'dashboard.data.carrots',
+      'green beans': 'dashboard.data.greenBeans',
+      'greenbeans': 'dashboard.data.greenbeans',
+      'green bean': 'dashboard.data.greenBeans',
+      'potato': 'dashboard.data.potato',
+      'potatoes': 'dashboard.data.potatoes',
+      'onion': 'dashboard.data.onion',
+      'onions': 'dashboard.data.onions',
+      'cucumber': 'dashboard.data.cucumber',
+      'cucumbers': 'dashboard.data.cucumbers',
+    };
+    
+    // Try exact match first
+    const translationKey = cropNameMap[normalized];
+    if (translationKey) {
+      const translated = t(translationKey);
+      // Only return translation if it's different (to avoid showing translation key)
+      if (translated && translated !== translationKey) {
+        return translated;
+      }
+    }
+    
+    // Return original name if no translation found
+    return cropName;
+  };
+
+  // Default crops with English names (will be translated)
+  const getDefaultCrops = () => [
+    { id: 'default-wheat', name: 'Wheat', originalName: 'Wheat', stock: 80, quantity: `2 ${t('dashboard.data.tons')}`, status: 'Good', color: '#2D6A4F', lastUpdated: `3 ${t('dashboard.data.timeHoursAgo')}` },
+    { id: 'default-corn', name: 'Corn', originalName: 'Corn', stock: 45, quantity: `1.2 ${t('dashboard.data.tons')}`, status: 'Low', color: '#BC6C25', lastUpdated: `1 ${t('dashboard.data.timeDayAgo')}` },
+    { id: 'default-rice', name: 'Rice', originalName: 'Rice', stock: 90, quantity: `3.5 ${t('dashboard.data.tons')}`, status: 'Good', color: '#2D6A4F', lastUpdated: `2 ${t('dashboard.data.timeDaysAgo')}` },
+    { id: 'default-soybeans', name: 'Soybeans', originalName: 'Soybeans', stock: 25, quantity: `0.8 ${t('dashboard.data.tons')}`, status: 'Critical', color: '#ef4444', lastUpdated: `5 ${t('dashboard.data.timeHoursAgo')}` },
   ];
+
+  // Format time ago in a localized way
+  const formatTimeAgo = (dateString: string) => {
+    if (!dateString) return t('notifications.recent');
+    
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffHours < 1) {
+        return t('notifications.justNow');
+      } else if (diffHours < 24) {
+        return `${diffHours} ${t('dashboard.data.timeHoursAgo')}`;
+      } else if (diffDays === 1) {
+        return `1 ${t('dashboard.data.timeDayAgo')}`;
+      } else if (diffDays < 7) {
+        return `${diffDays} ${t('dashboard.data.timeDaysAgo')}`;
+      } else {
+        return date.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US');
+      }
+    } catch (error) {
+      return t('notifications.recent');
+    }
+  };
 
   useEffect(() => {
     loadCrops();
@@ -810,26 +962,198 @@ function MyCropsPage({ user }: { user: any }) {
     };
   }, []);
 
+  // Re-translate crops when language changes
+  useEffect(() => {
+    // Use ref to get latest original crops value
+    const currentOriginalCrops = originalCropsRef.current;
+    
+    if (currentOriginalCrops.length > 0) {
+      // Re-define translate function inside useEffect to use current t
+      const translateCropNameCurrent = (cropName: string): string => {
+        if (!cropName) return cropName;
+        
+        const normalized = cropName.trim().toLowerCase();
+        
+        const cropNameMap: { [key: string]: string } = {
+          'wheat': 'dashboard.data.wheat',
+          'corn': 'dashboard.data.corn',
+          'rice': 'dashboard.data.rice',
+          'soybean': 'dashboard.data.soybeans',
+          'soybeans': 'dashboard.data.soybeans',
+          'tomato': 'dashboard.data.tomato',
+          'tomatoes': 'dashboard.data.tomatoes',
+          'lettuce': 'dashboard.data.lettuce',
+          'carrot': 'dashboard.data.carrot',
+          'carrots': 'dashboard.data.carrots',
+          'green beans': 'dashboard.data.greenBeans',
+          'greenbeans': 'dashboard.data.greenbeans',
+          'green bean': 'dashboard.data.greenBeans',
+          'potato': 'dashboard.data.potato',
+          'potatoes': 'dashboard.data.potatoes',
+          'onion': 'dashboard.data.onion',
+          'onions': 'dashboard.data.onions',
+          'cucumber': 'dashboard.data.cucumber',
+          'cucumbers': 'dashboard.data.cucumbers',
+        };
+        
+        const translationKey = cropNameMap[normalized];
+        if (translationKey) {
+          const translated = t(translationKey);
+          if (translated && translated !== translationKey) {
+            return translated;
+          }
+        }
+        
+        return cropName;
+      };
+
+      // Re-define formatTimeAgo to use current t and language
+      const formatTimeAgoCurrent = (dateString: string) => {
+        if (!dateString) return t('notifications.recent');
+        
+        try {
+          const date = new Date(dateString);
+          const now = new Date();
+          const diffMs = now.getTime() - date.getTime();
+          const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+          const diffDays = Math.floor(diffHours / 24);
+
+          if (diffHours < 1) {
+            return t('notifications.justNow');
+          } else if (diffHours < 24) {
+            return `${diffHours} ${t('dashboard.data.timeHoursAgo')}`;
+          } else if (diffDays === 1) {
+            return `1 ${t('dashboard.data.timeDayAgo')}`;
+          } else if (diffDays < 7) {
+            return `${diffDays} ${t('dashboard.data.timeDaysAgo')}`;
+          } else {
+            return date.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US');
+          }
+        } catch (error) {
+          return t('notifications.recent');
+        }
+      };
+
+      const translatedCrops = currentOriginalCrops.map((crop: any) => {
+        const stock = Number(crop.stock) || 0;
+        let status = crop.status;
+        if (!status || !['Good', 'Low', 'Critical'].includes(status)) {
+          if (stock <= 25) {
+            status = 'Critical';
+          } else if (stock <= 50) {
+            status = 'Low';
+          } else {
+            status = 'Good';
+          }
+        }
+
+        // Get the original English name for translation
+        const originalName = crop.originalName || crop.name;
+        
+        return {
+          ...crop,
+          name: translateCropNameCurrent(originalName),
+          stock: stock,
+          status: status,
+          color: stock <= 25 ? '#ef4444' : stock <= 50 ? '#BC6C25' : '#2D6A4F',
+          lastUpdated: formatTimeAgoCurrent(crop.updatedAt || crop.createdAt),
+        };
+      });
+      setCrops(translatedCrops);
+    }
+  }, [language, t]);
+
   const loadCrops = async () => {
     try {
       setIsLoading(true);
       const data: any = await cropsApi.getAll();
       
       if (data.crops && data.crops.length > 0) {
-        const cropsWithColors = data.crops.map((crop: any) => ({
-          ...crop,
-          color: crop.stock <= 25 ? '#ef4444' : crop.stock <= 50 ? '#BC6C25' : '#2D6A4F',
-          lastUpdated: `${Math.floor(Math.random() * 24)} ${t('dashboard.data.timeHoursAgo')}`,
-        }));
+        // Store original crop data with original names (ensure we get English names)
+        const cropsWithOriginalData = data.crops.map((crop: any) => {
+          // If the crop name is already translated (Arabic), we need to reverse it
+          // For now, we'll store the name as-is and assume API returns English
+          // But we'll also check if it looks like it might be translated
+          let originalName = crop.name;
+          
+          // Check if name might already be translated by checking if it's in our translation map
+          // This is a fallback - ideally API should always return English
+          const normalized = crop.name?.trim().toLowerCase() || '';
+          const isLikelyEnglish = /^[a-z\s]+$/.test(normalized);
+          
+          // If it doesn't look like English, try to find the English equivalent
+          // For now, we'll trust the API returns English names
+          // Store the name as originalName
+          return {
+            ...crop,
+            originalName: originalName, // Store original English name from API
+          };
+        });
+        
+        // Store original crops for re-translation (both state and ref)
+        setOriginalCrops(cropsWithOriginalData);
+        originalCropsRef.current = cropsWithOriginalData;
+        
+        // Calculate status and translate crop names
+        const cropsWithColors = cropsWithOriginalData.map((crop: any) => {
+          // Calculate status based on stock level if not already set
+          let status = crop.status;
+          if (!status || !['Good', 'Low', 'Critical'].includes(status)) {
+            const stock = Number(crop.stock) || 0;
+            if (stock <= 25) {
+              status = 'Critical';
+            } else if (stock <= 50) {
+              status = 'Low';
+            } else {
+              status = 'Good';
+            }
+          }
+
+          const stock = Number(crop.stock) || 0;
+          return {
+            ...crop,
+            name: translateCropName(crop.originalName || crop.name),
+            stock: stock,
+            status: status,
+            color: stock <= 25 ? '#ef4444' : stock <= 50 ? '#BC6C25' : '#2D6A4F',
+            lastUpdated: formatTimeAgo(crop.updatedAt || crop.createdAt),
+          };
+        });
         setCrops(cropsWithColors);
         // Dispatch event to notify other components
         window.dispatchEvent(new CustomEvent('cropsUpdated'));
       } else {
-        setCrops(defaultCrops);
+        const defaultCrops = getDefaultCrops();
+        const defaultCropsWithOriginal = defaultCrops.map((crop: any) => ({
+          ...crop,
+          originalName: crop.originalName || crop.name,
+        }));
+        setOriginalCrops(defaultCropsWithOriginal);
+        originalCropsRef.current = defaultCropsWithOriginal;
+        
+        // Translate default crops
+        const translatedDefaultCrops = defaultCropsWithOriginal.map((crop: any) => ({
+          ...crop,
+          name: translateCropName(crop.originalName || crop.name),
+        }));
+        setCrops(translatedDefaultCrops);
       }
     } catch (error) {
       console.error('Error loading crops:', error);
-      setCrops(defaultCrops);
+      const defaultCrops = getDefaultCrops();
+      const defaultCropsWithOriginal = defaultCrops.map((crop: any) => ({
+        ...crop,
+        originalName: crop.originalName || crop.name,
+      }));
+      setOriginalCrops(defaultCropsWithOriginal);
+      originalCropsRef.current = defaultCropsWithOriginal;
+      
+      // Translate default crops
+      const translatedDefaultCrops = defaultCropsWithOriginal.map((crop: any) => ({
+        ...crop,
+        name: translateCropName(crop.originalName || crop.name),
+      }));
+      setCrops(translatedDefaultCrops);
     } finally {
       setIsLoading(false);
     }
@@ -859,38 +1183,40 @@ function MyCropsPage({ user }: { user: any }) {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 mb-6">
-        <Button
-          variant={filter === 'all' ? 'default' : 'outline'}
-          onClick={() => setFilter('all')}
-          className={filter === 'all' ? 'bg-[#2D6A4F] hover:bg-[#2D6A4F]/90' : ''}
-        >
-          {t('crops.filterAll')} ({crops.length})
-        </Button>
-        <Button
-          variant={filter === 'good' ? 'default' : 'outline'}
-          onClick={() => setFilter('good')}
-          className={filter === 'good' ? 'bg-[#2D6A4F] hover:bg-[#2D6A4F]/90' : ''}
-        >
-          {t('crops.filterGood')} ({crops.filter(c => c.stock > 50).length})
-        </Button>
-        <Button
-          variant={filter === 'low' ? 'default' : 'outline'}
-          onClick={() => setFilter('low')}
-          className={filter === 'low' ? 'bg-[#BC6C25] hover:bg-[#BC6C25]/90' : ''}
-        >
-          {t('crops.filterLow')} ({crops.filter(c => c.stock <= 50 && c.stock > 25).length})
-        </Button>
-        <Button
-          variant={filter === 'critical' ? 'default' : 'outline'}
-          onClick={() => setFilter('critical')}
-          className={filter === 'critical' ? 'bg-red-600 hover:bg-red-700' : ''}
-        >
-          {t('crops.filterCritical')} ({crops.filter(c => c.stock <= 25).length})
-        </Button>
+      <div className="flex flex-wrap gap-2 mb-6 items-center">
+        <div className="flex flex-wrap gap-2 flex-1">
+          <Button
+            variant={filter === 'all' ? 'default' : 'outline'}
+            onClick={() => setFilter('all')}
+            className={filter === 'all' ? 'bg-[#2D6A4F] hover:bg-[#2D6A4F]/90' : ''}
+          >
+            {t('crops.filterAll')} ({crops.length})
+          </Button>
+          <Button
+            variant={filter === 'good' ? 'default' : 'outline'}
+            onClick={() => setFilter('good')}
+            className={filter === 'good' ? 'bg-[#2D6A4F] hover:bg-[#2D6A4F]/90' : ''}
+          >
+            {t('crops.filterGood')} ({crops.filter(c => c.stock > 50).length})
+          </Button>
+          <Button
+            variant={filter === 'low' ? 'default' : 'outline'}
+            onClick={() => setFilter('low')}
+            className={filter === 'low' ? 'bg-[#BC6C25] hover:bg-[#BC6C25]/90' : ''}
+          >
+            {t('crops.filterLow')} ({crops.filter(c => c.stock <= 50 && c.stock > 25).length})
+          </Button>
+          <Button
+            variant={filter === 'critical' ? 'default' : 'outline'}
+            onClick={() => setFilter('critical')}
+            className={filter === 'critical' ? 'bg-red-600 hover:bg-red-700' : ''}
+          >
+            {t('crops.filterCritical')} ({crops.filter(c => c.stock <= 25).length})
+          </Button>
+        </div>
         <Button
           onClick={() => setShowAddCropDialog(true)}
-          className="ml-auto bg-[#2D6A4F] hover:bg-[#2D6A4F]/90"
+          className="bg-[#2D6A4F] hover:bg-[#2D6A4F]/90 rounded-full"
         >
           {t('dashboard.addCrop')}
         </Button>
@@ -907,10 +1233,38 @@ function MyCropsPage({ user }: { user: any }) {
             </Card>
           ))}
         </div>
+      ) : filteredCrops.length === 0 ? (
+        <Card className="p-12 text-center">
+          <Sprout className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-gray-900 mb-2">{t('crops.noCropsFound')}</h3>
+          <p className="text-gray-600 text-sm mb-4">
+            {filter === 'all' 
+              ? t('crops.noCropsDesc')
+              : `${t('crops.noCropsFilterDesc')} (${t(`crops.filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`)})`
+            }
+          </p>
+          {filter !== 'all' && (
+            <Button 
+              onClick={() => setFilter('all')}
+              variant="outline"
+              className="rounded-full"
+            >
+              {t('crops.showAllCrops')}
+            </Button>
+          )}
+          {filter === 'all' && (
+            <Button 
+              onClick={() => setShowAddCropDialog(true)}
+              className="bg-[#2D6A4F] hover:bg-[#2D6A4F]/90 rounded-full"
+            >
+              {t('dashboard.addFirstCrop')}
+            </Button>
+          )}
+        </Card>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCrops.map((crop, index) => (
-            <Card key={index} className="p-6 hover:shadow-lg transition-shadow">
+          {filteredCrops.map((crop) => (
+            <Card key={crop.id || `crop-${crop.name}`} className="p-6 hover:shadow-lg transition-shadow">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div
@@ -951,7 +1305,7 @@ function MyCropsPage({ user }: { user: any }) {
               </div>
 
               <div className="text-xs text-gray-500 mb-4">
-                {t('crops.lastUpdated')}: {crop.lastUpdated}
+                {t('crops.lastUpdated')}: {crop.lastUpdated || t('notifications.recent')}
               </div>
 
               <div className="flex gap-2">

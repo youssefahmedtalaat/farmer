@@ -290,6 +290,19 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.data.corn': 'Corn',
     'dashboard.data.rice': 'Rice',
     'dashboard.data.soybeans': 'Soybeans',
+    'dashboard.data.tomato': 'Tomato',
+    'dashboard.data.tomatoes': 'Tomato',
+    'dashboard.data.lettuce': 'Lettuce',
+    'dashboard.data.carrot': 'Carrot',
+    'dashboard.data.carrots': 'Carrot',
+    'dashboard.data.greenBeans': 'Green beans',
+    'dashboard.data.greenbeans': 'Green beans',
+    'dashboard.data.potato': 'Potato',
+    'dashboard.data.potatoes': 'Potato',
+    'dashboard.data.onion': 'Onion',
+    'dashboard.data.onions': 'Onion',
+    'dashboard.data.cucumber': 'Cucumber',
+    'dashboard.data.cucumbers': 'Cucumber',
     'dashboard.data.tons': 'tons',
     
     // Alert Messages
@@ -335,6 +348,10 @@ const translations: Record<Language, Record<string, string>> = {
     'crops.filterGood': 'Good',
     'crops.filterLow': 'Low Stock',
     'crops.filterCritical': 'Critical',
+    'crops.noCropsFound': 'No Crops Found',
+    'crops.noCropsDesc': 'You haven\'t added any crops yet. Start by adding your first crop to track its stock levels.',
+    'crops.noCropsFilterDesc': 'No crops match the selected filter. Try a different filter or add new crops.',
+    'crops.showAllCrops': 'Show All Crops',
     
     // Notifications Page
     'notifications.title': 'Notifications',
@@ -922,6 +939,19 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.data.corn': 'الذرة',
     'dashboard.data.rice': 'الأرز',
     'dashboard.data.soybeans': 'فول الصويا',
+    'dashboard.data.tomato': 'الطماطم',
+    'dashboard.data.tomatoes': 'الطماطم',
+    'dashboard.data.lettuce': 'الخس',
+    'dashboard.data.carrot': 'الجزر',
+    'dashboard.data.carrots': 'الجزر',
+    'dashboard.data.greenBeans': 'الفاصوليا الخضراء',
+    'dashboard.data.greenbeans': 'الفاصوليا الخضراء',
+    'dashboard.data.potato': 'البطاطس',
+    'dashboard.data.potatoes': 'البطاطس',
+    'dashboard.data.onion': 'البصل',
+    'dashboard.data.onions': 'البصل',
+    'dashboard.data.cucumber': 'الخيار',
+    'dashboard.data.cucumbers': 'الخيار',
     'dashboard.data.tons': 'طن',
     
     // Alert Messages
@@ -967,6 +997,10 @@ const translations: Record<Language, Record<string, string>> = {
     'crops.filterGood': 'جيد',
     'crops.filterLow': 'مخزون منخفض',
     'crops.filterCritical': 'حرج',
+    'crops.noCropsFound': 'لم يتم العثور على محاصيل',
+    'crops.noCropsDesc': 'لم تقم بإضافة أي محاصيل بعد. ابدأ بإضافة أول محصول لتتبع مستويات المخزون.',
+    'crops.noCropsFilterDesc': 'لا توجد محاصيل تطابق الفلتر المحدد. جرب فلتراً مختلفاً أو أضف محاصيل جديدة.',
+    'crops.showAllCrops': 'عرض جميع المحاصيل',
     
     // Notifications Page
     'notifications.title': 'الإشعارات',
